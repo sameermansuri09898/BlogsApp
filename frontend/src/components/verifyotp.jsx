@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from "react";
 
 export default function VerifyOTP() {
+  const [step, setStep] = useState(1); // 👈 MAIN FEATURE
   const [formData, setFormData] = useState({
     email: "",
     otp: "",
   });
 
-  const [message, setMessage] = useState({ type: "", text: "" });
   const [seconds, setSeconds] = useState(0);
   const [resendDisabled, setResendDisabled] = useState(false);
+  const [message, setMessage] = useState({ type: "", text: "" });
 
-  // Handle input
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -18,79 +18,61 @@ export default function VerifyOTP() {
     });
   };
 
-  // ================= VERIFY OTP =================
-  const handleSubmit = async (e) => {
+  // ================= SEND EMAIL (STEP 1 → STEP 2)
+  const sendOTP = async (e) => {
     e.preventDefault();
     setMessage({ type: "", text: "" });
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/verifyotp/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setMessage({
-          type: "success",
-          text: data.msg || "OTP verified successfully",
-        });
-
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 1500);
-      } else {
-        handleError(data);
-      }
-    } catch {
-      setMessage({ type: "error", text: "Server error" });
-    }
-  };
-
-  // ================= RESEND OTP =================
-  const handleResend = async () => {
-    setMessage({ type: "", text: "" });
-
-    if (!formData.email) {
-      setMessage({ type: "error", text: "Please enter email first" });
-      return;
-    }
-
-    setResendDisabled(true);
-
-    try {
       const res = await fetch("http://127.0.0.1:8000/api/resendotp/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: formData.email }),
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        setMessage({
-          type: "success",
-          text: data.msg || "OTP resent successfully",
-        });
-
+        setStep(2); // 👈 MOVE TO OTP STEP
         startTimer();
+        setMessage({ type: "success", text: "OTP sent successfully" });
       } else {
-        handleError(data);
-        setResendDisabled(false);
+        setMessage({ type: "error", text: data.msg || "Error" });
       }
     } catch {
-      setMessage({ type: "error", text: "Failed to resend OTP" });
-      setResendDisabled(false);
+      setMessage({ type: "error", text: "Server error" });
     }
   };
 
-  // ================= TIMER =================
+  // ================= VERIFY OTP
+  const verifyOTP = async (e) => {
+    e.preventDefault();
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/verifyotp/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setStep(3); // 👈 SUCCESS SCREEN
+        setMessage({ type: "success", text: "Verified Successfully" });
+
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 1500);
+      } else {
+        setMessage({ type: "error", text: data.msg || "Invalid OTP" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Server error" });
+    }
+  };
+
+  // ================= TIMER
   const startTimer = () => {
     setSeconds(60);
     setResendDisabled(true);
@@ -109,98 +91,104 @@ export default function VerifyOTP() {
     return () => clearInterval(timer);
   }, [seconds]);
 
-  // ================= ERROR HANDLER =================
-  const handleError = (data) => {
-    if (data.msg) return setMessage({ type: "error", text: data.msg });
-    if (data.detail) return setMessage({ type: "error", text: data.detail });
-    if (data.non_field_errors)
-      return setMessage({ type: "error", text: data.non_field_errors[0] });
-    if (data.email)
-      return setMessage({ type: "error", text: data.email[0] });
-    if (data.otp)
-      return setMessage({ type: "error", text: data.otp[0] });
-
-    setMessage({ type: "error", text: "Something went wrong" });
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-blue-900 px-4">
+
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
 
         <h2 className="text-2xl font-bold text-center mb-6">
           Verify OTP
         </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Email
-            </label>
+        {/* ================= STEP 1 ================= */}
+        {step === 1 && (
+          <form onSubmit={sendOTP} className="space-y-4">
             <input
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
+              placeholder="Enter email"
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
               required
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Enter OTP
-            </label>
+            <button className="w-full bg-blue-600 text-white py-2 rounded-lg">
+              Send OTP
+            </button>
+          </form>
+        )}
+
+        {/* ================= STEP 2 ================= */}
+        {step === 2 && (
+          <form onSubmit={verifyOTP} className="space-y-4">
+
+            <p className="text-sm text-gray-500 text-center">
+              OTP sent to <b>{formData.email}</b>
+            </p>
+
             <input
               type="text"
               name="otp"
-              maxLength="6"
               value={formData.otp}
               onChange={handleChange}
+              placeholder="Enter OTP"
+              maxLength={6}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
               required
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
             />
-          </div>
 
-          <button className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition">
-            Verify OTP
-          </button>
+            <button className="w-full bg-green-600 text-white py-2 rounded-lg">
+              Verify OTP
+            </button>
 
-          <button
-            type="button"
-            onClick={handleResend}
-            disabled={resendDisabled}
-            className="w-full border border-blue-500 text-blue-500 py-2 rounded-lg mt-2 disabled:opacity-50"
-          >
-            Resend OTP
-          </button>
-
-          {/* Timer */}
-          {seconds > 0 && (
-            <p className="text-sm text-gray-500 text-center">
-              Resend available in {seconds}s
-            </p>
-          )}
-
-          {seconds === 0 && resendDisabled === false && (
-            <p className="text-sm text-gray-500 text-center">
-              You can resend OTP now
-            </p>
-          )}
-
-          {/* Messages */}
-          {message.text && (
-            <p
-              className={`text-sm text-center mt-2 ${
-                message.type === "success"
-                  ? "text-green-600"
-                  : "text-red-600"
-              }`}
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="w-full text-blue-600 text-sm"
             >
-              {message.text}
-            </p>
-          )}
-        </form>
+              Change Email
+            </button>
+
+            {/* Timer */}
+            {seconds > 0 ? (
+              <p className="text-center text-sm text-gray-500">
+                Resend in {seconds}s
+              </p>
+            ) : (
+              <button
+                type="button"
+                disabled={resendDisabled}
+                onClick={sendOTP}
+                className="w-full border border-blue-500 text-blue-500 py-2 rounded-lg"
+              >
+                Resend OTP
+              </button>
+            )}
+          </form>
+        )}
+
+        {/* ================= STEP 3 ================= */}
+        {step === 3 && (
+          <div className="text-center">
+            <h3 className="text-green-600 font-bold text-xl">
+              OTP Verified ✅
+            </h3>
+          </div>
+        )}
+
+        {/* MESSAGE */}
+        {message.text && (
+          <p
+            className={`text-sm text-center mt-4 ${
+              message.type === "success"
+                ? "text-green-600"
+                : "text-red-600"
+            }`}
+          >
+            {message.text}
+          </p>
+        )}
       </div>
     </div>
   );

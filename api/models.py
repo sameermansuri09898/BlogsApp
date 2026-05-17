@@ -30,14 +30,14 @@ class Blog(models.Model):
 
 
 class Comments(models.Model):
-    blog = models.ForeignKey(Blog, on_delete=models.CASCADE, related_name="comments")
+    blog = models.ForeignKey(Blog, on_delete=models.CASCADE, related_name="comment")
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     comnt = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
 
 class Likes(models.Model):
-    blog = models.ForeignKey(Blog, on_delete=models.CASCADE, related_name="comments")
+    blog = models.ForeignKey(Blog, on_delete=models.CASCADE, related_name="blog")
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     created_at=models.DateField(auto_now_add=True)
