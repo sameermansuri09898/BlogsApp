@@ -21,10 +21,20 @@ class Otp(models.Model):
         return self.user.username
     
 class Blog(models.Model):
+    cat=[
+        ('Technology','Technology'),
+        ('Education','Education'),
+        ('Design','Design'),
+        ('Travel','Travel'),
+        ('Culture','Culture'),
+      
+    ]
     bloggers = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=40)
+    Category=models.CharField(choices=cat,max_length=20,default='Culture')
     description = models.TextField()
     image = models.ImageField(upload_to='blogs_image/')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

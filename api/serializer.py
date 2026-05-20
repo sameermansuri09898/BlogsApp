@@ -164,7 +164,7 @@ class blogserializer(serializers.Serializer):
     likes_count=serializers.SerializerMethodField()
 
     class Meta:
-        fields=['title','description','image','commnts','likes_count']
+        fields=['title','Category','description','image','commnts','likes_count']
 
     def get_likes_count(self, obj):
         return obj.Likes.count()    
