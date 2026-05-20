@@ -1,6 +1,6 @@
 
 from rest_framework import serializers  
-from .models import User,Otp,Blog
+from .models import User,Otp,Blog,Comments
 from api.utils import send_otp_email,random_otp
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -151,23 +151,40 @@ class passwordchange(serializers.Serializer):
 
 
 
-class CommentSrializer(serializers.Serializer):
-    user_username=serializers.SerializerMethodField(source='user.username',read_only=True)
+class CommentSerializer(serializers.ModelSerializer):
+    user_username = serializers.CharField(source='user.username', read_only=True)
 
     class Meta:
-        fields=['id','cmnt','user_username']
+        model = Comments
+        fields=['id','comnt','user_username']
 
 
 
-class blogserializer(serializers.Serializer):
-    commnts=CommentSrializer(many=True,read_only=True)
-    likes_count=serializers.SerializerMethodField()
+class blogserializer(serializers.ModelSerializer):
+
+    comments = CommentSerializer(
+        many=True,
+        read_only=True
+    )
+
+
+    likes_count = serializers.SerializerMethodField()
 
     class Meta:
-        fields=['title','Category','description','image','commnts','likes_count']
+        model = Blog
+
+        fields = [
+            'id',
+            'title',
+            'Category',
+            'description',
+            'image',
+            'comments',
+            'likes_count'
+        ]
 
     def get_likes_count(self, obj):
-        return obj.Likes.count()    
+        return obj.Likes.count()
 
 
 

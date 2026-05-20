@@ -1,7 +1,7 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from .serializer import UserSerializer, LoginSerializer,blogserializer,CommentSrializer
+from .serializer import UserSerializer, LoginSerializer,blogserializer,CommentSerializer
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -136,66 +136,137 @@ class blogcview(viewsets.ModelViewSet):
         instance.delete()
        
 class CommntBlog(APIView):
-    permission_classes= [IsAuthenticated]
+
+    permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
-    def post(self,request):
-        blog=request.data.get('blog')
+    def post(self, request, id):
 
         try:
-            blog_id = Blog.objects.get(id=blog_id)
-        except Blog.DoesNotExist:
-           return Response({"Blog Does not found"},status=404)
+            blog = Blog.objects.get(id=id)
 
-        serializer=CommentSrializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(user=request.data,blog=blog_id)
+        except Blog.DoesNotExist:
 
             return Response({
-                "mssg":"created successfully",
-                "data":serializer.data
-            },status=201)
+                "error": "Blog not found"
+            }, status=404)
 
-        return Response(serializer.errors,status=400)
+        serializer = CommentSerializer(data=request.data)
 
-    def patch(self,request,pk):
-        try:
-         instance=Comments.objects.get(id=pk,user=request.user)   
-        except Comments.DoesNotExist:
-            return Response({"Blog Does not found"},status=404)
-
-        serializer=CommentSrializer(instance,data=request.data,partial=True)
         if serializer.is_valid():
+
+            serializer.save(
+                user=request.user,
+                blog=blog
+            )
+
+            return Response({
+                "message": "Comment added successfully",
+                "data": serializer.data
+            }, status=201)
+
+        return Response(serializer.errors, status=400)
+
+class CommentUpdateDelete(APIView):
+
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    # UPDATE COMMENT
+    def patch(self, request, pk):
+
+        try:
+            instance = Comments.objects.get(
+                id=pk,
+                user=request.user
+            )
+
+        except Comments.DoesNotExist:
+
+            return Response({
+                "error": "Comment not found"
+            }, status=404)
+
+        serializer = CommentSerializer(
+            instance,
+            data=request.data,
+            partial=True
+        )
+
+        if serializer.is_valid():
+
             serializer.save()
+
             return Response({
                 "msg": "Updated successfully",
                 "data": serializer.data
             })
-        return Response(status=404)
-    
-    def destroy(self,request,pk):
+
+        return Response(
+            serializer.errors,
+            status=400
+        )
+
+    # DELETE COMMENT
+    def delete(self, request, pk):
+
         try:
-         instance=Comments.objects.get(id=pk,user=request.user)   
+            instance = Comments.objects.get(
+                id=pk,
+                user=request.user
+            )
+
         except Comments.DoesNotExist:
-            return Response({"Blog Does not found"},status=404)
+
+            return Response({
+                "error": "Comment not found"
+            }, status=404)
+
         instance.delete()
-        return Response({"msg": "Deleted successfully"}, status=200) 
+
+        return Response({
+            "msg": "Deleted successfully"
+        }, status=200)
     
 
 class togglelikes(APIView):
-    permission_classes=[IsAuthenticated]
-    authentication_classes=[JWTAuthentication]
 
-    def post(self,request,pk):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request, pk):
 
         try:
-            blog_id=Blog.objects.get(user=request.user,id=pk)
+            blog = Blog.objects.get(id=pk)
+
         except Blog.DoesNotExist:
-            return Response({"Blog Does Not Found"},status=404)
 
-        like,created = Likes.objects.get_or_create(blog=blog_id,user=request.user)
+            return Response({
+                "error": "Blog not found"
+            }, status=404)
 
+        like, created = Likes.objects.get_or_create(
+            blog=blog,
+            user=request.user
+        )
+
+        # UNLIKE
         if not created:
+
             like.delete()
-            return Response({"liked": False, "msg": "Unliked"})
-        return Response({"liked": True, "msg": "Liked"})
+
+            return Response({
+                "liked": False,
+                "msg": "Unliked"
+            })
+
+        # LIKE
+        return Response({
+            "liked": True,
+            "msg": "Liked"
+        })
+class ListBlogs(APIView):
+    def get(self,request):
+        serializer=Blog.objects.all().order_by('id')
+        dt=blogserializer(serializer,many=True)
+        return Response(dt.data)
